@@ -71,6 +71,11 @@ class SpatioTemporalLSTMCell(keras.Model): # stlstm
 				kernel_initializer=self.initializer(self.num_hidden*2, self.num_hidden), # 参数初始化
 				name='cell_reduce')
 				
+		# bn
+		self.bn_t_cc = tensor_layer_norm('st_time_state_to_state')
+		self.bn_s_cc = tensor_layer_norm('st_spatio_state_to_state')
+		self.bn_x_cc = tensor_layer_norm('st_input_to_state')
+				
 	def init_state(self): # 初始化lstm 隐藏层状态
 		return tf.zeros([self.batch, self.height, self.width, self.num_hidden],
 						dtype=tf.float32)
@@ -95,9 +100,9 @@ class SpatioTemporalLSTMCell(keras.Model): # stlstm
 		
 		if self.layer_norm:
 			# 计算均值 标准差 归一化
-			t_cc = tensor_layer_norm(t_cc, 'time_state_to_state')
-			s_cc = tensor_layer_norm(s_cc, 'spatio_state_to_state')
-			x_cc = tensor_layer_norm(x_cc, 'input_to_state')
+			t_cc = self.bn_t_cc(t_cc)
+			s_cc = self.bn_s_cc(s_cc)
+			x_cc = self.bn_x_cc(x_cc)
 		
 		# 在第3维度上切分为4份 因为隐藏层是4*num_hidden 
 		i_s, g_s, f_s, o_s = tf.split(s_cc, 4, 3) # [batch, in_height, in_width, num_hidden]
