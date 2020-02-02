@@ -64,6 +64,10 @@ class MIMBlock(keras.Model):
 		self.oc_weight = tf.Variable(initial_value = tf.random.normal(shape=[self.height,self.width,self.num_hidden],
 					mean=0,stddev=1),name = 'oc_weight',trainable=True)
 					
+		# bn
+		self.bn_h_concat = tensor_layer_norm('mims_state_to_state')
+		self.bn_x_concat = tensor_layer_norm('mims_input_to_state')
+					
 		# MIMBLOCK	
 		# h
 		self.t_cc = layers.Conv2D(
@@ -91,6 +95,11 @@ class MIMBlock(keras.Model):
 				self.num_hidden,  # 网络输入 输出通道数
 				1, 1, padding='same', # 滤波器大小 步长 填充方式
 				name='cell_reduce')
+		
+		# bn
+		self.bn_t_cc = tensor_layer_norm('bl_time_state_to_state')
+		self.bn_s_cc = tensor_layer_norm('bl_spatio_state_to_state')
+		self.bn_x_cc = tensor_layer_norm('bl_input_to_state')
 					
 	def init_state(self): # 初始化lstm 隐藏层状态
 		return tf.zeros([self.batch, self.height, self.width, self.num_hidden],
@@ -110,7 +119,7 @@ class MIMBlock(keras.Model):
 		h_concat = self.mims_h_t(h_t)
 		
 		if self.layer_norm: # 是否归一化
-			h_concat = tensor_layer_norm(h_concat, 'state_to_state')
+			h_concat = self.bn_h_concat(h_concat)
 		
 		# 在第3维度上切分为4份 因为隐藏层是4*num_hidden 
 		i_h, g_h, f_h, o_h = tf.split(h_concat, 4, 3)
@@ -129,7 +138,7 @@ class MIMBlock(keras.Model):
 			x_concat = self.mims_x(x)
 			
 			if self.layer_norm:
-				x_concat = tensor_layer_norm(x_concat, 'input_to_state')
+				x_concat = self.bn_x_concat(x_concat)
 			i_x, g_x, f_x, o_x = tf.split(x_concat, 4, 3)
 
 			i_ += i_x
@@ -171,9 +180,9 @@ class MIMBlock(keras.Model):
 		x_cc = self.x_cc(x)
 			
 		if self.layer_norm:
-			t_cc = tensor_layer_norm(t_cc, 'time_state_to_state')
-			s_cc = tensor_layer_norm(s_cc, 'spatio_state_to_state')
-			x_cc = tensor_layer_norm(x_cc, 'input_to_state')
+			t_cc = self.bn_t_cc(t_cc)
+			s_cc = self.bn_s_cc(s_cc)
+			x_cc = self.bn_x_cc(x_cc)
 
 		i_s, g_s, f_s, o_s = tf.split(s_cc, 4, 3)
 		i_t, g_t, o_t = tf.split(t_cc, 3, 3)
