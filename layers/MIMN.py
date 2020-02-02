@@ -49,6 +49,10 @@ class MIMN(keras.Model):
 		# oc
 		self.oc_weight = tf.Variable(initial_value = tf.random.normal(shape=[self.height,self.width,self.num_hidden],
 					mean=0,stddev=1),name = 'oc_weight',trainable=True)
+					
+		# bn 
+		self.bn_h_concat = tensor_layer_norm('mimn_state_to_state')
+		self.bn_x_concat = tensor_layer_norm('mimn_input_to_state')
 
 	def init_state(self): # 初始化lstm 隐藏层状态
 		shape = [self.batch, self.height, self.width, self.num_hidden]
@@ -69,7 +73,7 @@ class MIMN(keras.Model):
 		h_concat = self.h_t(h_t)
 		
 		if self.layer_norm:
-			h_concat = tensor_layer_norm(h_concat, 'state_to_state')
+			h_concat = self.bn_h_concat(h_concat)
 		i_h, g_h, f_h, o_h = tf.split(h_concat, 4, 3)
 		
 		# 2 变量 可训练
@@ -86,7 +90,7 @@ class MIMN(keras.Model):
 			x_concat = self.x(x)
 			
 			if self.layer_norm:
-				x_concat = tensor_layer_norm(x_concat, 'input_to_state')
+				x_concat = self.bn_x_concat(x_concat)
 			i_x, g_x, f_x, o_x = tf.split(x_concat, 4, 3)
 
 			i_ += i_x
