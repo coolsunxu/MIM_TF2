@@ -52,7 +52,7 @@ class MIM(keras.Model): # stlstm
 											num_hidden_in,
 											self.num_hidden[i],
 											self.shape,
-											self.output_channels,
+											self.num_hidden[i-1],
 											tln=self.tln)
 			self.stlstm_layer.append(new_stlstm_layer) # 列表
 			self.cell_state.append(None) # 记忆
